@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Lint with flake8
+        run: |
+          flake8 app/ --max-line-length=100 --exclude=__pycache__
+
+      - name: Train model (smoke test)
+        run: |
+          python -c "
+          from app.model import train_and_save
+          train_and_save()
+          import os
+          assert os.path.exists('model/model.pkl'), 'model.pkl was not created'
+          print('Model trained and saved successfully')
+          "
+
+      - name: Start server and check /health
+        run: |
+          python -m app.model
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          sleep 4
+          curl -f http://localhost:8000/health || exit 1
+          echo "Health check passed"
+
+  docker:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build -t ml-monitored-endpoint:ci .
+
+      - name: Verify container starts
+        run: |
+          docker run -d --name ml-test -p 8000:8000 ml-monitored-endpoint:ci
+          sleep 6
+          curl -f http://localhost:8000/health || exit 1
+          docker stop ml-test
+          echo "Container health check passed"
