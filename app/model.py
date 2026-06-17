@@ -55,3 +55,4 @@ def predict(model, features: list[float]) -> dict:
 
 if __name__ == "__main__":
     train_and_save()
+    
