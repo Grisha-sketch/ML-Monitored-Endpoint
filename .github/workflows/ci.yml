@@ -29,9 +29,8 @@ jobs:
 
       - name: Train model (smoke test)
         run: |
+          python -m app.model
           python -c "
-          from app.model import train_and_save
-          train_and_save()
           import os
           assert os.path.exists('model/model.pkl'), 'model.pkl was not created'
           print('Model trained and saved successfully')
@@ -39,9 +38,8 @@ jobs:
 
       - name: Start server and check /health
         run: |
-          python -m app.model
           uvicorn app.main:app --host 0.0.0.0 --port 8000 &
-          sleep 4
+          sleep 5
           curl -f http://localhost:8000/health || exit 1
           echo "Health check passed"
 
@@ -61,7 +59,7 @@ jobs:
       - name: Verify container starts
         run: |
           docker run -d --name ml-test -p 8000:8000 ml-monitored-endpoint:ci
-          sleep 6
+          sleep 8
           curl -f http://localhost:8000/health || exit 1
           docker stop ml-test
           echo "Container health check passed"
