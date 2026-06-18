@@ -20,4 +20,4 @@ class HealthResponse(BaseModel):
     status: str
     model_loaded: bool
     total_requests: int
-       
+    
